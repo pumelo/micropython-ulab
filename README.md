@@ -35,7 +35,8 @@ iterables via the `array` constructor, or by means of the `arange`, `concatenate
 
 In addition to the `ndarray` operators and methods, `ulab` defines a great number of functions that can
 take `ndarray`s or `micropython` iterables as their arguments. Most of the functions have been ported from 
-`numpy`, but several are re-implementations of `scipy` features. For a complete list, see
+`numpy`, but several are re-implementations of `scipy` features. In addition, the `utils` module adds functions that 
+interface `ndarray`s with peripheral devices. For a complete list, see
 [micropython-ulab](https://micropython-ulab.readthedocs.io/en/latest)!
 
 If flash space is a concern, unnecessary functions can be excluded from the compiled firmware with 
@@ -234,6 +235,47 @@ If it compiles without error, you can plug in your ESP32 via USB and then flash 
 ```bash
 make erase && make deploy
 ```
+### RP2-based Port
+
+Building `micropython` with `ulab` currently requires Pimoroni's [micropython fork](https://github.com/pimoroni/micropython/tree/continuous-integration).
+
+Once the pull request for this fork is resolved you should be able to use the official repository. To get started, run the commands below.
+
+First, clone the micropython fork and checkout the `continous-integration` branch.
+```bash
+git clone git@github.com:pimoroni/micropython.git micropython
+cd micropython
+git checkout continuous-integration
+```
+
+Then, setup the required submodules.
+```bash
+git submodule update --init lib/tinyusb
+git submodule update --init lib/pico-sdk
+cd lib/pico-sdk
+git submodule update --init lib/tinyusb
+```
+
+You'll also need to compile `mpy-cross`.
+```bash
+cd ../../mpy-cross
+make
+```
+
+That's all you need to do for the `micropython` repository. Now, let us clone the fork of `ulab` (in a directory outside the micropython repository).
+```bash
+cd ../../
+git clone https://github.com/v923z/micropython-ulab ulab
+```
+
+With this setup, we can now build the firmware. Back in the `micropython` repository, use these commands:
+
+```bash
+cd ports/rp2
+make USER_C_MODULE=/path/to/ulab/code
+```
+If `micropython` and `ulab` were in the same folder on the computer, you can set `USER_C_MODULES=../../../ulab/code`. The compiled firmware will be placed in `micropython/ports/rp2/build`.
+
 
 # Issues, contributing, and testing
 

@@ -6,18 +6,39 @@ There might be cases, when the format of your data does not conform to
 ``ulab``, i.e., there is no obvious way to map the data to any of the
 five supported ``dtype``\ s. A trivial example is an ADC or microphone
 signal with 32-bit resolution. For such cases, ``ulab`` defines the
-``utils`` module, which, at the moment, has two functions that are not
-``numpy`` compatible.
+``utils`` module, which, at the moment, has four functions that are not
+``numpy`` compatible, but which should ease interfacing ``ndarray``\ s
+to peripheral devices.
 
-from_intbuffer, from_uintbuffer
--------------------------------
+The ``utils`` module can be enabled by setting the
+``ULAB_HAS_UTILS_MODULE`` constant to 1 in
+`ulab.h <https://github.com/v923z/micropython-ulab/blob/master/code/ulab.h>`__:
 
-With the help of ``utils.from_intbuffer``, and
-``utils.from_uintbuffer``, it is possible to convert 32-bit integer
+.. code:: c
+
+   #ifndef ULAB_HAS_UTILS_MODULE
+   #define ULAB_HAS_UTILS_MODULE               (1)
+   #endif
+
+This still does not compile any functions into the firmware. You can add
+a function by setting the corresponding pre-processor constant to 1.
+E.g.,
+
+.. code:: c
+
+   #ifndef ULAB_UTILS_HAS_FROM_INT16_BUFFER
+   #define ULAB_UTILS_HAS_FROM_INT16_BUFFER    (1)
+   #endif
+
+from_int32_buffer, from_uint32_buffer
+-------------------------------------
+
+With the help of ``utils.from_int32_buffer``, and
+``utils.from_uint32_buffer``, it is possible to convert 32-bit integer
 buffers to ``ndarrays`` of float type. These functions have a syntax
 similar to ``numpy.frombuffer``; they support the ``count=-1``, and
-``offset=0`` keyword argument. However, in addition, they also accept
-the ``out``, and ``byteswap=False``.
+``offset=0`` keyword arguments. However, in addition, they also accept
+``out=None``, and ``byteswap=False``.
 
 Here is an example without keyword arguments
 
@@ -31,12 +52,12 @@ Here is an example without keyword arguments
     a = bytearray([1, 1, 0, 0, 0, 0, 0, 255])
     print('a: ', a)
     print()
-    print('unsigned integers: ', utils.from_uintbuffer(a))
+    print('unsigned integers: ', utils.from_uint32_buffer(a))
     
     b = bytearray([1, 1, 0, 0, 0, 0, 0, 255])
     print('\nb:  ', b)
     print()
-    print('signed integers: ', utils.from_intbuffer(b))
+    print('signed integers: ', utils.from_int32_buffer(b))
 
 .. parsed-literal::
 
@@ -72,7 +93,7 @@ of ``out`` is not ``float``, a ``TypeError`` exception will be raised.
     a = np.array([1, 2], dtype=np.float)
     b = bytearray([1, 0, 1, 0, 0, 1, 0, 1])
     print('b: ', b)
-    utils.from_uintbuffer(b, out=a)
+    utils.from_uint32_buffer(b, out=a)
     print('a: ', a)
 
 .. parsed-literal::
@@ -97,8 +118,8 @@ microcontroller, ``from_(u)intbuffer`` allows a conversion via the
     
     a = bytearray([1, 0, 0, 0, 0, 0, 0, 1])
     print('a: ', a)
-    print('buffer without byteswapping: ', utils.from_uintbuffer(a))
-    print('buffer with byteswapping: ', utils.from_uintbuffer(a, byteswap=True))
+    print('buffer without byteswapping: ', utils.from_uint32_buffer(a))
+    print('buffer with byteswapping: ', utils.from_uint32_buffer(a, byteswap=True))
 
 .. parsed-literal::
 
@@ -109,7 +130,9 @@ microcontroller, ``from_(u)intbuffer`` allows a conversion via the
     
 
 
-.. code::
+from_int16_buffer, from_uint16_buffer
+-------------------------------------
 
-    # code to be run in CPython
-    
+These two functions are identical to ``utils.from_int32_buffer``, and
+``utils.from_uint32_buffer``, with the exception that they convert
+16-bit integers to floating point ``ndarray``\ s.
