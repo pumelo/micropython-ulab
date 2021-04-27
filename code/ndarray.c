@@ -233,6 +233,71 @@ mp_uint_t ndarray_print_edgeitems = NDARRAY_PRINT_EDGEITEMS;
 //|     """alternate constructor function for `ulab.ndarray`. Mirrors numpy.array"""
 //|     ...
 
+#if defined(MICROPY_VERSION_MAJOR) && MICROPY_VERSION_MAJOR == 1 && MICROPY_VERSION_MINOR == 11
+
+void mp_obj_slice_indices(mp_obj_t self_in, mp_int_t length, mp_bound_slice_t *result) {
+    mp_obj_slice_t *self = MP_OBJ_TO_PTR(self_in);
+    mp_int_t start, stop, step;
+
+    if (self->step == mp_const_none) {
+        step = 1;
+    } else {
+        step = mp_obj_get_int(self->step);
+        if (step == 0) {
+            mp_raise_ValueError(translate("slice step can't be zero"));
+        }
+    }
+
+    if (step > 0) {
+        // Positive step
+        if (self->start == mp_const_none) {
+            start = 0;
+        } else {
+            start = mp_obj_get_int(self->start);
+            if (start < 0) {
+                start += length;
+            }
+            start = MIN(length, MAX(start, 0));
+        }
+
+        if (self->stop == mp_const_none) {
+            stop = length;
+        } else {
+            stop = mp_obj_get_int(self->stop);
+            if (stop < 0) {
+                stop += length;
+            }
+            stop = MIN(length, MAX(stop, 0));
+        }
+    } else {
+        // Negative step
+        if (self->start == mp_const_none) {
+            start = length - 1;
+        } else {
+            start = mp_obj_get_int(self->start);
+            if (start < 0) {
+                start += length;
+            }
+            start = MIN(length - 1, MAX(start, -1));
+        }
+
+        if (self->stop == mp_const_none) {
+            stop = -1;
+        } else {
+            stop = mp_obj_get_int(self->stop);
+            if (stop < 0) {
+                stop += length;
+            }
+            stop = MIN(length - 1, MAX(stop, -1));
+        }
+    }
+
+    result->start = start;
+    result->stop = stop;
+    result->step = step;
+}
+#endif /* MICROPY_VERSION v1.11 */
+
 void ndarray_fill_array_iterable(mp_float_t *array, mp_obj_t iterable) {
     mp_obj_iter_buf_t x_buf;
     mp_obj_t x_item, x_iterable = mp_getiter(iterable, &x_buf);
@@ -1019,8 +1084,8 @@ mp_obj_t ndarray_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw,
 
 // broadcasting is used at a number of places, always include
 bool ndarray_can_broadcast(ndarray_obj_t *lhs, ndarray_obj_t *rhs, uint8_t *ndim, size_t *shape, int32_t *lstrides, int32_t *rstrides) {
-    // returns True or False, depending on, whether the two arrays can be broadcast together
-    // numpy's broadcasting rules are as follows:
+    // Returns true or false, depending on, whether the two arrays can be broadcast together
+    // with numpy's broadcasting rules. These are as follows:
     //
     // 1. the two shapes are either equal
     // 2. one of the shapes is 1
@@ -1613,7 +1678,7 @@ ndarray_obj_t *ndarray_from_mp_obj(mp_obj_t obj) {
     ndarray_obj_t *ndarray;
     if(MP_OBJ_IS_INT(obj)) {
         int32_t ivalue = mp_obj_get_int(obj);
-        if((ivalue > 0) && (ivalue < 256)) {
+        if((ivalue >= 0) && (ivalue < 256)) {
             ndarray = ndarray_new_linear_array(1, NDARRAY_UINT8);
             uint8_t *array = (uint8_t *)ndarray->array;
             array[0] = (uint8_t)ivalue;
